@@ -1,0 +1,23 @@
+[project]
+name = "parentsquare-mcp"
+version = "0.1.0"
+description = "MCP server for ParentSquare school communication platform"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=1.26.0",
+    "requests>=2.32.0",
+    "beautifulsoup4>=4.13.0",
+    "icalendar>=6.0.0",
+]
+
+[project.optional-dependencies]
+pdf = ["pymupdf>=1.27.0"]
+
+[project.scripts]
+parentsquare-mcp = "parentsquare_mcp.server:main"
+parentsquare-export-cookies = "parentsquare_mcp.export_cookies:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
