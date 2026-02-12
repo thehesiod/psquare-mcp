@@ -97,4 +97,4 @@ Groups use a GraphQL endpoint (`/graphql`) instead of HTML scraping. The directo
 
 MIT — see [LICENSE](LICENSE). Note: the optional `pymupdf` dependency is AGPL-3.0 licensed.
 
-<!-- mcp-name: io.github.thehesiod/psquare -->
+mcp-name: io.github.thehesiod/psquare
