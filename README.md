@@ -1,6 +1,10 @@
 # ParentSquare MCP Server
 
+[![MCP Registry](https://img.shields.io/badge/MCP-Registry-blue)](https://registry.modelcontextprotocol.io) [![PyPI](https://img.shields.io/pypi/v/parentsquare-mcp)](https://pypi.org/project/parentsquare-mcp/)
+
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that gives Claude access to [ParentSquare](https://www.parentsquare.com), a school-parent communication platform. Since ParentSquare has no public API, this server scrapes the web interface using saved session cookies.
+
+Available on the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.thehesiod/psquare` and on [PyPI](https://pypi.org/project/parentsquare-mcp/) as `parentsquare-mcp`.
 
 ## Features
 
