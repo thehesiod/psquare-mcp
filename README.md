@@ -49,52 +49,23 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that 
 ## Setup
 
 ### Prerequisites
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/) package manager
 - [1Password CLI](https://developer.1password.com/docs/cli/) (`op`) with a "Parentsquare" item containing `username` and `password` fields
 
-### Installation
+### Install in Claude Code
 
 ```bash
-# Clone and install
-git clone <repo-url>
-cd parentsquare
-uv sync
-
-# Optional: enable PDF text extraction (AGPL-3.0 licensed)
-uv sync --extra pdf
+claude mcp add --transport stdio parentsquare -- uvx --from git+https://github.com/thehesiod/psquare-mcp parentsquare-mcp
 ```
 
-### Bootstrap Cookies
-
-The server needs ParentSquare session cookies to authenticate. Run the export helper to capture them from your browser:
+To enable PDF text extraction for post attachments (optional, AGPL-3.0 licensed):
 
 ```bash
-uv run parentsquare-export-cookies
-```
-
-This opens ParentSquare in your browser. After logging in (including 2FA), copy the `Cookie` header from Chrome DevTools Network tab and paste it into the terminal. Cookies are saved to `~/.parentsquare_cookies.json`.
-
-After the initial bootstrap, the server automatically refreshes cookies on session expiry using 1Password credentials.
-
-### Configure Claude Code
-
-Add the server to your Claude Code MCP config (e.g. `~/.claude/claude_desktop_config.json` or project `.mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "parentsquare": {
-      "command": "uv",
-      "args": ["--directory", "/path/to/parentsquare", "run", "parentsquare-mcp"]
-    }
-  }
-}
+claude mcp add --transport stdio parentsquare -- uvx --from "psquare-mcp[pdf] @ git+https://github.com/thehesiod/psquare-mcp" parentsquare-mcp
 ```
 
 ### That's It
 
-No further configuration needed. The server **auto-discovers** your schools, students, and user ID from ParentSquare on first use. Just make sure cookies are bootstrapped (step above) and the server handles the rest.
+No further configuration needed. The server **auto-discovers** your schools, students, and user ID from ParentSquare on first use. Authentication is handled automatically via 1Password CLI — when the session expires, the server loads your credentials from 1Password and re-authenticates (including MFA if needed).
 
 ## How It Works
 
@@ -124,4 +95,4 @@ Groups use a GraphQL endpoint (`/graphql`) instead of HTML scraping. The directo
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Note: the optional `pymupdf` dependency is AGPL-3.0 licensed. Install it separately with `uv sync --extra pdf` if you need PDF text extraction.
+MIT — see [LICENSE](LICENSE). Note: the optional `pymupdf` dependency is AGPL-3.0 licensed.
