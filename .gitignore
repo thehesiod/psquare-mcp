@@ -10,3 +10,12 @@ build/
 
 # Local Claude Code settings (contains project-specific permissions with personal IDs)
 .claude/settings.local.json
+
+# MCP registry auth tokens
+.mcpregistry_*
+
+# macOS resource forks
+._*
+
+# Windows reserved name phantom
+nul
