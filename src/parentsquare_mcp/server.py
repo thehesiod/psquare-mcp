@@ -95,7 +95,12 @@ def _app(ctx: Context[Any, Any]) -> AppContext:
 def _ensure_account(app: AppContext) -> None:
     """Lazily discover account info (schools, students, user_id) on first use."""
     if not app.client.account.user_id:
-        app.client.discover_account()
+        try:
+            app.client.discover_account()
+        except MFARequiredError as exc:
+            app.mfa_state = exc.mfa_state
+            app.client.mfa_state = exc.mfa_state
+            raise
 
 
 def _school_name(app: AppContext, school_id: int) -> str:
@@ -189,7 +194,7 @@ async def _with_mfa_retry(
 
 
 @mcp.tool(name="list_schools")
-def list_schools(context: Context[Any, Any]) -> dict:
+async def list_schools(context: Context[Any, Any]) -> dict | str:
     """List available schools and students in your ParentSquare account.
 
     Returns JSON with schools, students, and your user ID.
@@ -197,7 +202,9 @@ def list_schools(context: Context[Any, Any]) -> dict:
     For school contact info (phone, address), use get_directory(school_id).
     """
     app = _app(context)
-    _ensure_account(app)
+    _, err = await _with_mfa_retry(app, context, lambda: _ensure_account(app))
+    if err:
+        return err
     acct = app.client.account
     schools = [{"school_id": sid, "name": name} for sid, name in acct.schools.items()]
     students = [
@@ -449,9 +456,11 @@ async def list_conversations(school_id: int, context: Context[Any, Any] = None) 
         school_id: School ID (use list_schools to find available IDs)
     """
     app = _app(context)
-    _ensure_account(app)
-    path = URLS["chats"].format(school_id=school_id, user_id=app.client.account.user_id)
-    soup, err = await _with_mfa_retry(app, context, lambda: app.client.get_page(path))
+    def _fetch_chats():
+        _ensure_account(app)
+        path = URLS["chats"].format(school_id=school_id, user_id=app.client.account.user_id)
+        return app.client.get_page(path)
+    soup, err = await _with_mfa_retry(app, context, _fetch_chats)
     if err:
         return err
     convos = parse_conversation_list(soup)
@@ -480,9 +489,11 @@ async def get_conversation(school_id: int, chat_id: int, context: Context[Any, A
         chat_id: Conversation/chat ID (from list_conversations results)
     """
     app = _app(context)
-    _ensure_account(app)
-    path = URLS["chat"].format(school_id=school_id, user_id=app.client.account.user_id, chat_id=chat_id)
-    soup, err = await _with_mfa_retry(app, context, lambda: app.client.get_page(path, params={"lang": "en"}))
+    def _fetch_chat():
+        _ensure_account(app)
+        path = URLS["chat"].format(school_id=school_id, user_id=app.client.account.user_id, chat_id=chat_id)
+        return app.client.get_page(path, params={"lang": "en"})
+    soup, err = await _with_mfa_retry(app, context, _fetch_chat)
     if err:
         return err
     messages = parse_chat_thread(soup)
@@ -1068,9 +1079,11 @@ async def list_volunteer_hours(school_id: int, context: Context[Any, Any] = None
         school_id: School ID
     """
     app = _app(context)
-    _ensure_account(app)
-    path = URLS["volunteer_hours"].format(school_id=school_id, user_id=app.client.account.user_id)
-    soup, err = await _with_mfa_retry(app, context, lambda: app.client.get_page(path))
+    def _fetch_hours():
+        _ensure_account(app)
+        path = URLS["volunteer_hours"].format(school_id=school_id, user_id=app.client.account.user_id)
+        return app.client.get_page(path)
+    soup, err = await _with_mfa_retry(app, context, _fetch_hours)
     if err:
         return err
     records = parse_volunteer_hours(soup)

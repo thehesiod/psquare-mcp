@@ -252,18 +252,31 @@ def submit_mfa(session: requests.Session, mfa_state: MFAState, code: str) -> Non
             redirect_url = f"{BASE_URL}{redirect_url}"
         session.get(redirect_url)
 
+    # Verify the MFA actually established an authenticated session
+    if not is_session_valid(session):
+        raise RuntimeError(
+            "MFA code was accepted but session is not authenticated. "
+            "The code may have expired. Try logging in again to get a new code."
+        )
+
     logger.info("MFA verification successful")
     save_cookies(session)
     MFAState.clear()
 
 
 def is_session_valid(session: requests.Session) -> bool:
-    """Quick check: does a request to the root page redirect to /signin?"""
-    resp = session.get(f"{BASE_URL}/", allow_redirects=False)
-    if resp.status_code == 302:
-        location = resp.headers.get("Location", "")
-        return "/signin" not in location
-    return resp.status_code == 200
+    """Check whether the session is authenticated.
+
+    ParentSquare returns 200 on the root page even without auth, so we can't
+    rely on a /signin redirect. Instead, check for gon.user_id in the page
+    which is only present for authenticated users.
+    """
+    resp = session.get(f"{BASE_URL}/", allow_redirects=True)
+    if "/signin" in resp.url:
+        return False
+    if resp.status_code != 200:
+        return False
+    return "gon.user_id" in resp.text
 
 
 def ensure_session(session: requests.Session, email: str, password: str) -> None:

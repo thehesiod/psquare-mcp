@@ -58,13 +58,13 @@ Available on the [MCP Registry](https://registry.modelcontextprotocol.io) as `io
 ### Install in Claude Code
 
 ```bash
-claude mcp add --transport stdio parentsquare -- uvx --from git+https://github.com/thehesiod/psquare-mcp parentsquare-mcp
+claude mcp add --transport stdio parentsquare -- uvx --from "parentsquare-mcp @ git+https://github.com/thehesiod/psquare-mcp" parentsquare-mcp
 ```
 
 To enable PDF text extraction for post attachments (optional, AGPL-3.0 licensed):
 
 ```bash
-claude mcp add --transport stdio parentsquare -- uvx --from "psquare-mcp[pdf] @ git+https://github.com/thehesiod/psquare-mcp" parentsquare-mcp
+claude mcp add --transport stdio parentsquare -- uvx --from "parentsquare-mcp[pdf] @ git+https://github.com/thehesiod/psquare-mcp" parentsquare-mcp
 ```
 
 ### That's It
@@ -96,6 +96,12 @@ Groups use a GraphQL endpoint (`/graphql`) instead of HTML scraping. The directo
 | `beautifulsoup4` | HTML parsing | MIT |
 | `icalendar` | ICS calendar parsing | BSD |
 | `pymupdf` | PDF text extraction (optional) | AGPL-3.0 |
+
+## Disclaimer
+
+This project is an independent, unofficial tool and is **not affiliated with, endorsed by, or associated with ParentSquare, Inc.** in any way. ParentSquare is a trademark of ParentSquare, Inc.
+
+This server works by scraping ParentSquare's web interface, which has no public API. Use at your own risk. The authors take no responsibility for account suspension, data loss, or any other consequences arising from its use. ParentSquare may change their website at any time, which could break functionality or violate their terms of service.
 
 ## License
 

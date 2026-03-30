@@ -176,6 +176,22 @@ class PSClient:
                     current_school_id = int(m.group(1))
                 break
 
+        # If no user_id found, session is invalid — trigger re-login and retry
+        if not self.account.user_id:
+            logger.info("No gon.user_id found on root page — session not authenticated, re-logging in...")
+            self._relogin()
+            soup = self.get_page("/")
+            for script in soup.find_all("script"):
+                text = script.string or ""
+                if "gon.user_id" in text:
+                    m = re.search(r"gon\.user_id=(\d+)", text)
+                    if m:
+                        self.account.user_id = int(m.group(1))
+                    m = re.search(r"gon\.institute_id=(\d+)", text)
+                    if m:
+                        current_school_id = int(m.group(1))
+                    break
+
         if not current_school_id:
             logger.warning("Could not discover current school")
             return self.account

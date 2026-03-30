@@ -19,7 +19,9 @@ export_cookies.py  — CLI helper to bootstrap cookies from browser DevTools
 
 ### Authentication
 - Cookies are lazy-loaded from `~/.parentsquare_cookies.json` on startup (no network call)
-- On session expiry (detected by redirect to `/signin`), credentials are fetched from 1Password CLI (`op item get Parentsquare` — item must be named "Parentsquare" with fields labeled `username` and `password`)
+- On session expiry (detected by redirect to `/signin` **or** missing `gon.user_id` on the root page), credentials are fetched from 1Password CLI (`op item get Parentsquare` — item must be named "Parentsquare" with fields labeled `username` and `password`)
+- **Important**: ParentSquare's root page (`/`) returns HTTP 200 even for unauthenticated users, so `/signin` redirect alone is not sufficient to detect expired sessions. `discover_account()` and `is_session_valid()` also check for `gon.user_id` in the page content.
+- MFA code submission verifies the session is actually authenticated after the code is accepted
 - MFA state persists to disk (`.parentsquare_mfa_state.json`) so it survives server restarts
 - The server supports MCP elicitation for inline MFA code entry
 - **User-Agent must include "Chrome"** — ParentSquare returns 403 `browser_unsupported` otherwise. The server sets this in `app_lifespan`.
