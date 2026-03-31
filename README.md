@@ -58,12 +58,16 @@ Available on the [MCP Registry](https://registry.modelcontextprotocol.io) as `io
 - **`submit_mfa_code`** — Complete MFA verification with a 6-digit code
 - Supports MCP elicitation for inline MFA prompts
 - Session cookies persisted to `~/.parentsquare_cookies.json`
-- Credentials loaded from 1Password CLI on session expiry
+- Credentials loaded from environment variables or 1Password CLI on session expiry
 
 ## Setup
 
 ### Prerequisites
-- [1Password CLI](https://developer.1password.com/docs/cli/) (`op`) with a "Parentsquare" item containing `username` and `password` fields
+
+Credentials can be provided in either of two ways (checked in this order):
+
+1. **Environment variables** — set `PS_USERNAME` and `PS_PASSWORD`
+2. **[1Password CLI](https://developer.1password.com/docs/cli/)** (`op`) — with a "Parentsquare" item containing `username` and `password` fields
 
 ### Install in Claude Code
 
@@ -79,7 +83,24 @@ claude mcp add --transport stdio parentsquare -- uvx --from "parentsquare-mcp[pd
 
 ### That's It
 
-No further configuration needed. The server **auto-discovers** your schools, students, and user ID from ParentSquare on first use. Authentication is handled automatically via 1Password CLI — when the session expires, the server loads your credentials from 1Password and re-authenticates (including MFA if needed).
+No further configuration needed. The server **auto-discovers** your schools, students, and user ID from ParentSquare on first use. Authentication is handled automatically — when the session expires, the server loads your credentials from environment variables (or 1Password CLI) and re-authenticates (including MFA if needed).
+
+To use environment variables with Claude Code, add an `env` block to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "parentsquare": {
+      "command": "uvx",
+      "args": ["parentsquare-mcp"],
+      "env": {
+        "PS_USERNAME": "your@email.com",
+        "PS_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
 
 ## How It Works
 
