@@ -36,10 +36,10 @@ class PSClient:
         Raises MFARequiredError if 2FA is needed — caller should store the
         mfa_state and prompt the user for the code via submit_mfa_code tool.
         """
-        from parentsquare_mcp.auth import load_credentials_from_1password, login
+        from parentsquare_mcp.auth import load_credentials, login
 
-        logger.info("Session expired, loading credentials from 1Password...")
-        email, password = load_credentials_from_1password()
+        logger.info("Session expired, loading credentials...")
+        email, password = load_credentials()
         login(self.session, email, password)
 
     def _save_cookies_if_changed(self) -> None:
