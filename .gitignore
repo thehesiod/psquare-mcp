@@ -19,3 +19,6 @@ build/
 
 # Windows reserved name phantom
 nul
+
+# Cygwin/MSYS crash dumps
+*.stackdump
