@@ -6,6 +6,16 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that 
 
 Available on the [MCP Registry](https://registry.modelcontextprotocol.io) as `io.github.thehesiod/psquare` and on [PyPI](https://pypi.org/project/parentsquare-mcp/) as `parentsquare-mcp`.
 
+## Disclaimer
+
+> **This project is not affiliated with, endorsed by, or sponsored by ParentSquare, Inc.** "ParentSquare" and all related names, logos, and trademarks are the property of ParentSquare, Inc.
+>
+> This server communicates with ParentSquare's **undocumented internal APIs** (scraping the web UI and calling its non-public `/api/v2/` JSON endpoints) — these are not published, not guaranteed to be stable, and may change or be blocked at any time without notice. Use of those interfaces may violate ParentSquare's Terms of Service; you are responsible for reviewing the ToS and deciding whether your use is acceptable.
+>
+> **Use at your own risk.** The authors and contributors accept no responsibility for any consequences of using this software, including but not limited to: account suspension or termination, data loss or corruption, missed or incorrect notifications, MFA lockouts, leaked session cookies, IP blocks, or any other direct or indirect damages. No warranty is provided — see [LICENSE](LICENSE) for the full MIT no-warranty clause.
+>
+> If ParentSquare publishes an official API, this project should be considered deprecated in favor of that.
+
 ## Features
 
 ### Feed & Posts
@@ -96,12 +106,6 @@ Groups use a GraphQL endpoint (`/graphql`) instead of HTML scraping. The directo
 | `beautifulsoup4` | HTML parsing | MIT |
 | `icalendar` | ICS calendar parsing | BSD |
 | `pymupdf` | PDF text extraction (optional) | AGPL-3.0 |
-
-## Disclaimer
-
-This project is an independent, unofficial tool and is **not affiliated with, endorsed by, or associated with ParentSquare, Inc.** in any way. ParentSquare is a trademark of ParentSquare, Inc.
-
-This server works by scraping ParentSquare's web interface, which has no public API. Use at your own risk. The authors take no responsibility for account suspension, data loss, or any other consequences arising from its use. ParentSquare may change their website at any time, which could break functionality or violate their terms of service.
 
 ## License
 
