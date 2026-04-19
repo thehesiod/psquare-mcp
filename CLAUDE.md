@@ -85,6 +85,46 @@ uv run parentsquare-export-cookies   # Bootstrap cookies from browser
 ### Account Discovery
 Schools, students, and user ID are auto-discovered at runtime from ParentSquare pages (`gon.*` script variables, sidebar student links, and the school switcher AJAX endpoint). School names are fetched via `/api/v2/schools/{id}`. No config file needed.
 
+## Release Process
+
+Publishing is automated via `.github/workflows/publish.yml`. Uses **PyPI Trusted Publishers** (OIDC) and GitHub OIDC for the MCP Registry — no API tokens stored anywhere.
+
+### One-time setup (pypi.org)
+
+Before the first CI-driven release, add a "pending" trusted publisher on pypi.org:
+
+1. Log into [pypi.org](https://pypi.org) as the account that owns the project.
+2. Go to [Manage → Publishing → Add a new pending publisher](https://pypi.org/manage/account/publishing/).
+3. Fill in:
+   - **PyPI Project Name**: `parentsquare-mcp`
+   - **Owner**: `thehesiod`
+   - **Repository name**: `psquare-mcp`
+   - **Workflow name**: `publish.yml`
+   - **Environment name**: *(leave blank, or set e.g. `release` for a manual-approval gate)*
+4. Save. The publisher activates on the first successful tag push that runs `publish.yml`.
+
+*(The MCP Registry namespace `io.github.thehesiod/*` is already auto-authorized for the `thehesiod` GitHub account via OIDC — no pypi-style pending-publisher setup needed.)*
+
+### Cutting a release
+
+1. Bump the version in **both** `pyproject.toml` and `server.json` (the workflow fails if they don't match — both `version` and `packages[0].version` in `server.json`).
+2. Commit: `chore: bump to X.Y.Z`.
+3. Tag + push (tags are bare semver — no `v` prefix):
+   ```bash
+   git tag X.Y.Z
+   git push origin main --tags
+   ```
+4. The workflow:
+   - Verifies versions match the tag across `pyproject.toml` + `server.json`
+   - Builds wheel + sdist with `uv build`
+   - Publishes to PyPI via OIDC
+   - Publishes to the MCP Registry via `mcp-publisher login github-oidc`
+   - Creates a GitHub Release with auto-generated notes and the built artifacts
+
+### Ownership proof for the MCP Registry
+
+The PyPI package README must contain the literal line `mcp-name: io.github.thehesiod/psquare` (see the bottom of `README.md`). The registry's publisher validates this by fetching the published PyPI artifact and looking for that string. Removing the line will break future registry publishes.
+
 ## Open Improvement Areas
 
 - **Feed search**: No keyword search/filter on `get_feeds` — Claude must paginate and scan titles/summaries manually. A search tool or keyword parameter would help.

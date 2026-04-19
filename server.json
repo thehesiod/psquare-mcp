@@ -6,12 +6,12 @@
     "url": "https://github.com/thehesiod/psquare-mcp",
     "source": "github"
   },
-  "version": "0.1.3",
+  "version": "0.1.5",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "parentsquare-mcp",
-      "version": "0.1.3",
+      "version": "0.1.5",
       "transport": {
         "type": "stdio"
       }
