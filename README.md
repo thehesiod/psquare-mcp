@@ -102,6 +102,8 @@ To use environment variables with Claude Code, add an `env` block to your MCP co
 }
 ```
 
+> **Security note:** environment variables place your password in plaintext inside your MCP config file. If you chose a password manager specifically to avoid that, prefer the 1Password CLI path.
+
 ## How It Works
 
 The server uses `requests` + `BeautifulSoup` to scrape ParentSquare's server-rendered HTML pages. Each tool follows the pattern:

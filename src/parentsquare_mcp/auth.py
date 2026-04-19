@@ -84,6 +84,8 @@ def load_credentials_from_env() -> tuple[str, str] | None:
     if username and password:
         logger.info("Loaded credentials from environment variables")
         return username, password
+    if username or password:
+        logger.warning("PS_USERNAME/PS_PASSWORD partially set — both required; falling back to 1Password")
     return None
 
 
@@ -109,8 +111,7 @@ def load_credentials_from_1password() -> tuple[str, str]:
 
 def load_credentials() -> tuple[str, str]:
     """Load credentials from env vars, falling back to 1Password."""
-    creds = load_credentials_from_env()
-    if creds:
+    if creds := load_credentials_from_env():
         return creds
     return load_credentials_from_1password()
 
