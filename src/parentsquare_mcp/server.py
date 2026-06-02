@@ -787,11 +787,6 @@ query GetGroups($institute: InstituteInputType!, $studentId: ID = null) {
           name
           description
           isPublic
-          userCount
-          activeFeedsCount
-          lastPostAt
-          hasUserOrStudent
-          feedsPath
         }
       }
     }
@@ -802,7 +797,7 @@ query GetGroups($institute: InstituteInputType!, $studentId: ID = null) {
 
 @mcp.tool(name="list_groups")
 async def list_groups(school_id: int, context: Context[Any, Any] = None) -> str:
-    """List groups at a school with member counts and descriptions.
+    """List groups at a school with active post counts and descriptions.
 
     To view a group's posts, call get_group_feed with BOTH the same school_id
     used here AND the group_id shown in the results.
@@ -821,18 +816,36 @@ async def list_groups(school_id: int, context: Context[Any, Any] = None) -> str:
         return err
 
     cat_groups = (data.get("groupsIndex") or {}).get("list", {}).get("categorizedGroups", [])
+
+    # ParentSquare removed userCount/activeFeedsCount/hasUserOrStudent (and
+    # lastPostAt/feedsPath) from the GraphQL Group type, which made the old
+    # query 422 and broke list_groups entirely. Re-source the active-post count
+    # from the JSON:API groups endpoint (keyed by id); best-effort, falls back
+    # to 0. Member count is no longer exposed on either surface.
+    post_counts: dict[int, int] = {}
+    try:
+        jg = app.client.get_json(f"/api/v2/schools/{school_id}/groups")
+        for item in jg.get("data", []):
+            attrs = item.get("attributes", {})
+            gid = attrs.get("id") or item.get("id")
+            if gid is not None:
+                post_counts[int(gid)] = attrs.get("active_posts_count", 0)
+    except Exception:
+        logger.debug("Could not enrich group post counts from JSON:API", exc_info=True)
+
     groups: list[Group] = []
     for cat in cat_groups:
         cat_name = cat.get("name", "")
         for g in cat.get("groups", []):
+            gid = g["id"]
             groups.append(Group(
-                id=g["id"],
+                id=gid,
                 name=g["name"],
-                member_count=g.get("userCount", 0),
+                member_count=0,  # userCount removed from GraphQL Group type
                 description=g.get("description"),
                 category=cat_name,
-                post_count=g.get("activeFeedsCount", 0),
-                is_member=g.get("hasUserOrStudent", False),
+                post_count=post_counts.get(int(gid), 0),
+                is_member=False,  # hasUserOrStudent removed from GraphQL Group type
             ))
 
     if not groups:
@@ -847,8 +860,7 @@ async def list_groups(school_id: int, context: Context[Any, Any] = None) -> str:
             current_cat = g.category
             lines.append(f"## {current_cat or 'Uncategorized'}")
             lines.append("")
-        member_tag = "★ member" if g.is_member else ""
-        lines.append(f"**[group_id={g.id}] {g.name}** ({g.member_count} members, {g.post_count} posts) {member_tag}")
+        lines.append(f"**[group_id={g.id}] {g.name}** ({g.post_count} active posts)")
         if g.description:
             lines.append(f"  {g.description[:200]}")
         lines.append("")
