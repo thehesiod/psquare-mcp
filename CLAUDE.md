@@ -144,14 +144,14 @@ Before the first CI-driven release, add a "pending" trusted publisher on pypi.or
 1. Log into [pypi.org](https://pypi.org) as the account that owns the project.
 2. Go to [Manage → Publishing → Add a new pending publisher](https://pypi.org/manage/account/publishing/).
 3. Fill in:
-   - **PyPI Project Name**: `psquare-mcp`
-   - **Owner**: `jasonko`
+   - **PyPI Project Name**: `parentsquare-mcp`
+   - **Owner**: `thehesiod`
    - **Repository name**: `psquare-mcp`
    - **Workflow name**: `publish.yml`
    - **Environment name**: *(leave blank, or set e.g. `release` for a manual-approval gate)*
 4. Save. The publisher activates on the first successful tag push that runs `publish.yml`.
 
-*(The MCP Registry namespace `io.github.jasonko/*` is already auto-authorized for the `jasonko` GitHub account via OIDC — no pypi-style pending-publisher setup needed.)*
+*(The MCP Registry namespace `io.github.thehesiod/*` is already auto-authorized for the `thehesiod` GitHub account via OIDC — no pypi-style pending-publisher setup needed.)*
 
 ### Cutting a release
 
@@ -171,23 +171,41 @@ Before the first CI-driven release, add a "pending" trusted publisher on pypi.or
    - Publishes to the MCP Registry via `mcp-publisher login github-oidc`
    - Creates a GitHub Release with auto-generated notes and the built artifacts
 
-### Watching the run: this repo is a fork
+### Publishing identity: must match the repo owner
 
-`jasonko/psquare-mcp` is a fork of `thehesiod/psquare-mcp`, so **bare `gh run` / `gh release`
-commands resolve to the upstream parent** and silently report on the wrong repository:
-`gh run list` returns stale upstream runs (making a failed release look like it never
-triggered) and `gh run view <id>` 404s against `thehesiod/...`. Always pass the repo
-explicitly:
+The canonical repository is **`thehesiod/psquare-mcp`**, and the publishing identity is pinned to
+that owner on purpose:
+
+| | value |
+|---|---|
+| PyPI project | `parentsquare-mcp` |
+| MCP Registry name | `io.github.thehesiod/psquare` |
+| `publish.yml` repo guard | `github.repository == 'thehesiod/psquare-mcp'` |
+
+**The registry namespace is not a free choice.** `mcp-publisher login github-oidc` mints a token
+whose subject is the *running repository*, and the registry only lets it publish
+`io.github.<that repo's owner>/*`. A `server.json` naming `io.github.<someone-else>/…` cannot be
+published from this repo at all. So the namespace, `pyproject.toml`'s `name`, `server.json`'s
+`packages[0].identifier`, the README badge/`mcp-name` line, and the `publish.yml` guard all have to
+move together as one unit. If the repo ever moves owners again, change all five.
+
+The guard matters as much as the namespace: it exists so forks don't publish, and a stale owner in
+it makes the release job **skip silently** — a green run that shipped nothing.
+
+Historical note: development happened for a while in the `jasonko/psquare-mcp` fork, which
+published `psquare-mcp` / `io.github.jasonko/psquare` up to 0.3.0. That fork was merged back here
+at 0.3.0 and those two names are now **frozen and abandoned** — 0.4.0 is the first release under
+the reunified `thehesiod` identity, versioned above both old lines so neither registry rejects it.
 
 ```bash
-gh run list --workflow=publish.yml -R jasonko/psquare-mcp
-gh run view <run-id> -R jasonko/psquare-mcp --log-failed
-gh api repos/jasonko/psquare-mcp/actions/runs --jq '.workflow_runs[0] | "\(.head_branch) \(.status) \(.conclusion)"'
+gh run list --workflow=publish.yml -R thehesiod/psquare-mcp
+gh run view <run-id> -R thehesiod/psquare-mcp --log-failed
+gh api repos/thehesiod/psquare-mcp/actions/runs --jq '.workflow_runs[0] | "\(.head_branch) \(.status) \(.conclusion)"'
 ```
 
 Verify the outcome at the source rather than trusting the job list — PyPI
-(`curl -s -o /dev/null -w '%{http_code}' https://pypi.org/pypi/psquare-mcp/X.Y.Z/json`) and the
-registry (`https://registry.modelcontextprotocol.io/v0/servers?search=io.github.jasonko/psquare`).
+(`curl -s -o /dev/null -w '%{http_code}' https://pypi.org/pypi/parentsquare-mcp/X.Y.Z/json`) and the
+registry (`https://registry.modelcontextprotocol.io/v0/servers?search=io.github.thehesiod/psquare`).
 
 ### If a release fails before PyPI accepts the upload
 
@@ -196,7 +214,7 @@ still free). If the upload never landed, prefer deleting the tag and its GitHub 
 re-tagging the fix commit over bumping to a throwaway patch version:
 
 ```bash
-gh release delete X.Y.Z -R jasonko/psquare-mcp --yes --cleanup-tag
+gh release delete X.Y.Z -R thehesiod/psquare-mcp --yes --cleanup-tag
 git tag -d X.Y.Z && git push origin :refs/tags/X.Y.Z
 git tag X.Y.Z && git push origin main --tags
 ```
@@ -215,7 +233,7 @@ hatchling backwards.
 
 ### Ownership proof for the MCP Registry
 
-The PyPI package README must contain the literal line `mcp-name: io.github.jasonko/psquare` (see the bottom of `README.md`). The registry's publisher validates this by fetching the published PyPI artifact and looking for that string. Removing the line will break future registry publishes.
+The PyPI package README must contain the literal line `mcp-name: io.github.thehesiod/psquare` (see the bottom of `README.md`). The registry's publisher validates this by fetching the published PyPI artifact and looking for that string. Removing the line will break future registry publishes.
 
 ## Open Improvement Areas
 

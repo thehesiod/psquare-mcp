@@ -1,6 +1,6 @@
 [project]
-name = "psquare-mcp"
-version = "0.3.0"
+name = "parentsquare-mcp"
+version = "0.4.0"
 description = "MCP server that gives Claude AI access to ParentSquare — feeds, calendar events, messages, directories, plus admin roster management for students and guardians"
 readme = "README.md"
 license = "MIT"
@@ -19,7 +19,7 @@ keywords = [
     "school-admin",
     "student-information-system",
 ]
-authors = [{ name = "jasonko" }]
+authors = [{ name = "thehesiod" }, { name = "jasonko" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: End Users/Desktop",
@@ -44,9 +44,9 @@ pdf = ["pymupdf>=1.27.0"]
 dev = ["pytest>=8.0.0"]
 
 [project.urls]
-Homepage = "https://github.com/jasonko/psquare-mcp"
-Repository = "https://github.com/jasonko/psquare-mcp"
-"Bug Tracker" = "https://github.com/jasonko/psquare-mcp/issues"
+Homepage = "https://github.com/thehesiod/psquare-mcp"
+Repository = "https://github.com/thehesiod/psquare-mcp"
+"Bug Tracker" = "https://github.com/thehesiod/psquare-mcp/issues"
 
 [project.scripts]
 parentsquare-mcp = "parentsquare_mcp.server:main"

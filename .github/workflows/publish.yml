@@ -66,7 +66,7 @@ jobs:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') && github.repository == 'jasonko/psquare-mcp'
+    if: startsWith(github.ref, 'refs/tags/') && github.repository == 'thehesiod/psquare-mcp'
     permissions:
       id-token: write
     steps:
@@ -80,7 +80,7 @@ jobs:
     name: Publish to MCP Registry
     needs: pypi-publish
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') && github.repository == 'jasonko/psquare-mcp'
+    if: startsWith(github.ref, 'refs/tags/') && github.repository == 'thehesiod/psquare-mcp'
     permissions:
       id-token: write
     steps:

@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.jasonko/psquare",
+  "name": "io.github.thehesiod/psquare",
   "description": "MCP server for ParentSquare — feeds, calendars, messages, directories, and admin roster tools",
   "repository": {
-    "url": "https://github.com/jasonko/psquare-mcp",
+    "url": "https://github.com/thehesiod/psquare-mcp",
     "source": "github"
   },
-  "version": "0.3.0",
+  "version": "0.4.0",
   "packages": [
     {
       "registryType": "pypi",
-      "identifier": "psquare-mcp",
-      "version": "0.3.0",
+      "identifier": "parentsquare-mcp",
+      "version": "0.4.0",
       "transport": {
         "type": "stdio"
       }
