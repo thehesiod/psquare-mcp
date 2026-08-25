@@ -27,7 +27,7 @@ export_cookies.py  — CLI helper to bootstrap cookies from browser DevTools
 - MFA code submission verifies the session is actually authenticated after the code is accepted
 - MFA state persists to disk (`.parentsquare_mfa_state.json`) so it survives server restarts
 - The server supports MCP elicitation for inline MFA code entry
-- **User-Agent must include "Chrome"** — ParentSquare returns 403 `browser_unsupported` otherwise. The server sets this in `app_lifespan`.
+- **User-Agent must include "Chrome"** — ParentSquare returns 403 `browser_unsupported` otherwise, and (worse) can serve *unauthenticated* content to a script-looking request that carries valid cookies, which ends in placeholder data rather than an error. `make_session()` in `client.py` owns this and is `PSClient`'s default session, so a bare `PSClient()` is browser-like too; `app_lifespan` just calls it. Do not re-apply the header at a call site.
 - The `ps_s` session cookie is **httpOnly** — it can't be read via `document.cookie`, which is why `export_cookies` requires the Network tab in DevTools
 - `ps_s` rotates on every request. `PSClient` calls `_save_cookies_if_changed()` after each successful request to persist the latest value.
 - GraphQL requests (used by `list_groups`) require a CSRF token extracted from a page's `<meta name="csrf-token">` tag. MFA submit also requires a CSRF token from the MFA page.

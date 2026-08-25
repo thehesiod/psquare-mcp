@@ -12,6 +12,31 @@ from parentsquare_mcp.config import BASE_URL, URLS
 
 logger = logging.getLogger(__name__)
 
+BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
+def make_session() -> requests.Session:
+    """Build a requests session that identifies itself as a browser.
+
+    ParentSquare rejects non-browser clients with a 403 ``browser_unsupported``
+    page, so the ``User-Agent`` must contain "Chrome". This lives here, as
+    ``PSClient``'s default session, rather than at the call site: a bare
+    ``PSClient()`` would otherwise send ``python-requests/x.y`` and silently get
+    unauthenticated content back even with valid cookies. Pinned by
+    tests/test_user_agent.py.
+    """
+    session = requests.Session()
+    session.headers.update(BROWSER_HEADERS)
+    return session
+
 
 @dataclass
 class AccountInfo:
@@ -26,7 +51,7 @@ class AccountInfo:
 class PSClient:
     """HTTP client wrapper for ParentSquare with auto re-login on session expiry."""
 
-    session: requests.Session = field(default_factory=requests.Session)
+    session: requests.Session = field(default_factory=make_session)
     mfa_state: MFAState | None = None
     account: AccountInfo = field(default_factory=AccountInfo)
     _csrf_token: str | None = field(default=None, repr=False)

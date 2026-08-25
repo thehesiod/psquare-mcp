@@ -376,6 +376,14 @@ def is_session_valid(session: requests.Session) -> bool:
     rely on a /signin redirect. Instead, check for a numeric gon.user_id in the
     page. Unauthenticated pages render ``gon.user_id=null``, so a mere substring
     check for ``gon.user_id`` is not sufficient — the value must be an integer.
+
+    **Do not add a ``<title>``-based check here.** It is tempting (and has been
+    suggested) to treat a page titled "Sign In | ..." as unauthenticated, but
+    verified live: the root page of a genuinely authenticated session is titled
+    ``Sign In | <School> | ParentSquare`` while carrying ``gon.user_id=<int>``,
+    no password form, and full access to ``/schools/{id}/feeds``. Keying on the
+    title would misclassify a working session and force endless re-logins.
+    Pinned by tests/test_user_agent.py::test_signin_title_with_user_id_is_valid.
     """
     resp = session.get(f"{BASE_URL}/", allow_redirects=True)
     if "/signin" in resp.url:

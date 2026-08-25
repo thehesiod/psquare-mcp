@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 
 from parentsquare_mcp.auth import MFARequiredError, MFAState, load_cookies, submit_mfa
 from parentsquare_mcp.audit import WRITES_DISABLED_MESSAGE, audit_write, writes_enabled
-from parentsquare_mcp.client import PSClient
+from parentsquare_mcp.client import PSClient, make_session
 from parentsquare_mcp.config import DEFAULT_DOWNLOAD_DIR, URLS
 from parentsquare_mcp.download import download_file as do_download
 from parentsquare_mcp.parsers.admin import (
@@ -105,18 +105,7 @@ async def app_lifespan(server: MCPServer) -> AsyncIterator[AppContext]:
     if available, but 1Password and login only happen on the first actual request
     that needs authentication (via PSClient._relogin).
     """
-    session = requests.Session()
-    session.headers.update(
-        {
-            "User-Agent": (
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/131.0.0.0"
-            ),
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-        }
-    )
+    session = make_session()
 
     # Pre-load saved cookies if available (no network call, no 1Password)
     load_cookies(session)
