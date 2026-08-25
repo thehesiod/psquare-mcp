@@ -85,7 +85,7 @@ Same write gate and audit log as above; no deletion of classes or staff.
 
 ### Authentication
 - **`submit_mfa_code`** — Complete MFA verification with a 6-digit code
-- Supports MCP elicitation for inline MFA prompts
+- Supports MCP elicitation for inline MFA prompts (set `PS_NO_ELICIT` to disable for unattended callers)
 - Session cookies persisted to `~/.parentsquare_cookies.json`
 - Credentials loaded from environment variables, 1Password, or LastPass CLI on session expiry
 
@@ -181,6 +181,35 @@ To use the LastPass CLI instead of 1Password, log in once (`lpass login <your-la
 ```
 
 `PS_LASTPASS_ITEM` is optional (defaults to `parentsquare.com`).
+
+### Unattended use (`PS_NO_ELICIT`)
+
+When MFA is required, the server prompts for the code inline via MCP elicitation.
+That prompt waits for a human, so an unattended caller — a claude.ai routine, a
+scheduled job — has nobody to answer it and the tool call simply blocks until the
+elicitation times out.
+
+Set `PS_NO_ELICIT=1` to skip the prompt. The tool returns the "MFA verification
+required" message immediately, and the caller can retrieve the code out of band
+(via a Gmail or Microsoft 365 MCP, for example) and pass it to `submit_mfa_code`:
+
+```json
+{
+  "mcpServers": {
+    "parentsquare": {
+      "command": "uvx",
+      "args": ["parentsquare-mcp"],
+      "env": {
+        "PS_NO_ELICIT": "1"
+      }
+    }
+  }
+}
+```
+
+The check is presence-based: **any** non-empty value disables elicitation, so
+`PS_NO_ELICIT=0` and `PS_NO_ELICIT=false` also disable it. To re-enable inline
+prompting, unset the variable entirely.
 
 ## How It Works
 
