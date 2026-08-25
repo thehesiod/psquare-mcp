@@ -123,6 +123,50 @@ uv run parentsquare-export-cookies   # Bootstrap cookies from browser
 uv run --group dev pytest            # Run the unit tests
 ```
 
+### CI and branch protection
+
+`ci.yml` runs the test suite (3.12 + 3.13) and the packaging checks on every pull
+request and on pushes to `main`. `publish.yml` runs only on tags.
+
+**All changes go through a pull request**, but `main` requires **zero approving
+reviews**. That combination is deliberate rather than half-finished:
+
+- GitHub never lets an author approve their own PR, and the repo has two people
+  with write access. Requiring an approval would mean every change waits on the
+  other person, and a rule that is routinely bypassed provides no safety while
+  still costing friction. Requiring **status checks** instead applies to
+  everyone, needs no second human, and is what actually catches regressions.
+- The PR itself is still required because it is a *gate*: on a direct push CI
+  reports the breakage after `main` is already broken. It also gives each change
+  a revertable unit.
+
+Intended settings on `main` (repo settings, not a file — see below):
+
+| Setting | Value |
+|---|---|
+| Require a PR before merging | yes |
+| Required approving reviews | 0 |
+| Dismiss stale reviews | yes |
+| Required status checks | `Test (Python 3.12)`, `Test (Python 3.13)`, `Build distribution` |
+| Strict (branch up to date) | no — avoids a rebase of every open PR each time one merges |
+| Include administrators | **yes** |
+
+"Include administrators" is the setting that matters. With it off, protection is
+advisory for admins and GitHub offers a "merge without waiting for requirements"
+checkbox, so the rules only bind people who cannot bypass them anyway.
+
+These are recorded here rather than automated because applying them from CI would
+require a PAT with `administration: write` stored as a repo secret. The release
+pipeline is deliberately token-free (OIDC only), and a long-lived admin token is
+a poor trade for a setting that changes almost never. If protection is ever lost,
+restore it from the table above.
+
+**Because a PR description does not live in the working tree**, reasoning that
+constrains future code belongs in a commit message, a docstring beside the code,
+and a test that pins it. Reserve the PR body for what cannot live in the tree:
+the limits of verification (e.g. "tested against fixtures, not a live district
+account"), provenance of a reverse-engineered endpoint, and reviewer asks.
+
 ### Adding a New Parser
 1. Create `parsers/<name>.py` with a `parse_*` function that takes `BeautifulSoup` and returns dataclass(es)
 2. Add dataclass(es) to `models.py`

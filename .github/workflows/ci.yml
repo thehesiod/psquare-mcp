@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Floor and ceiling of the requires-python range in pyproject.toml.
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: uv run --group dev pytest -q
+
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.13"
+
+      # Mirrors publish.yml's release-time gate. Catching a bad description here
+      # means a 422 from the MCP Registry surfaces on the PR rather than after a
+      # tag has already been pushed and the version burned.
+      - name: Verify server.json description fits the MCP Registry limit
+        run: |
+          set -e
+          python - <<'PY'
+          import json, sys
+          desc = json.load(open("server.json"))["description"]
+          if len(desc) > 100:
+              print(f"::error::server.json description is {len(desc)} chars; the MCP Registry rejects anything over 100.")
+              sys.exit(1)
+          print(f"server.json description length OK ({len(desc)}/100)")
+          PY
+
+      - name: Verify pyproject and server.json agree
+        run: |
+          set -e
+          python - <<'PY'
+          import json, sys, tomllib
+          proj = tomllib.load(open("pyproject.toml", "rb"))["project"]
+          srv = json.load(open("server.json"))
+          pkg = srv["packages"][0]
+          errors = []
+          if srv["version"] != proj["version"]:
+              errors.append(f"server.json version {srv['version']} != pyproject version {proj['version']}")
+          if pkg["version"] != proj["version"]:
+              errors.append(f"server.json packages[0].version {pkg['version']} != pyproject version {proj['version']}")
+          if pkg["identifier"] != proj["name"]:
+              errors.append(f"server.json packages[0].identifier {pkg['identifier']} != pyproject name {proj['name']}")
+          for e in errors:
+              print(f"::error::{e}")
+          sys.exit(1 if errors else 0)
+          PY
+
+      - name: Build wheel and sdist
+        run: uv build
