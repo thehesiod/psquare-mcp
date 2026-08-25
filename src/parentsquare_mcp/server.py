@@ -205,6 +205,12 @@ async def _handle_mfa(app: AppContext, exc: MFARequiredError, ctx: Context[Any, 
     app.mfa_state = exc.mfa_state
     app.client.mfa_state = exc.mfa_state
 
+    # Skip elicitation when running unattended (e.g. claude.ai routines without
+    # a live user to answer). Caller should fetch the code from email and call
+    # submit_mfa_code explicitly.
+    if os.environ.get("PS_NO_ELICIT"):
+        return str(exc)
+
     # Try elicitation — prompt user for MFA code inline
     try:
         result = await ctx.elicit(
