@@ -17,6 +17,10 @@ URLS = {
     "groups": "/schools/{school_id}/groups",
     "group_feed": "/schools/{school_id}/groups/{group_id}/feeds",
     "student_dashboard": "/students/{student_id}/dashboard",
+    "district_schools": (
+        "/layout_templates/district_switch_schools_list"
+        "?institute_id={institute_id}&institute_type=District"
+    ),
     "sign_ups": "/schools/{school_id}/sign_ups",
     "notices": "/schools/{school_id}/notices",
     "polls": "/schools/{school_id}/polls",

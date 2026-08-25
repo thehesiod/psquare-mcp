@@ -177,6 +177,8 @@ account"), provenance of a reverse-engineered endpoint, and reviewer asks.
 ### Account Discovery
 Schools, students, and user ID are auto-discovered at runtime from ParentSquare pages (`gon.*` script variables, sidebar student links, and the school switcher AJAX endpoint). School names are fetched via `/api/v2/schools/{id}`. No config file needed.
 
+**`gon.institute_id` is not always a school id.** For district-level accounts `gon.institute_type` is `"District"` and `gon.institute_id` is a *district* id, which 404s on every `/schools/{id}` route (`/schools/{id}/feeds`, `/api/v2/schools/{id}`) — the failure is silent, degrading into a placeholder `School <district_id>` entry and 404s from every school-scoped tool. `discover_account()` therefore checks `institute_type` first and, for districts, expands the id into member schools via `GET /layout_templates/district_switch_schools_list?institute_id={id}&institute_type=District`, whose HTML lists `/schools/{school_id}/feeds` links. The first member school becomes the "current" school for the student-discovery pass; the district id is never stored as a school.
+
 ## Release Process
 
 Publishing is automated via `.github/workflows/publish.yml`. Uses **PyPI Trusted Publishers** (OIDC) and GitHub OIDC for the MCP Registry — no API tokens stored anywhere.

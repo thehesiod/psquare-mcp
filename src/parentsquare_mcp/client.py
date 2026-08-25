@@ -8,7 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from parentsquare_mcp.auth import MFAState, save_cookies
-from parentsquare_mcp.config import BASE_URL
+from parentsquare_mcp.config import BASE_URL, URLS
 
 logger = logging.getLogger(__name__)
 
@@ -323,46 +323,95 @@ class PSClient:
         self._save_cookies_if_changed()
         return resp.text
 
+    def _extract_gon(self, soup) -> tuple[int, int, str]:
+        """Pull (user_id, institute_id, institute_type) out of the root page's gon.* vars.
+
+        institute_type is "District" for district-level accounts and "School"
+        (or absent) otherwise. It matters because gon.institute_id is a *district*
+        id in the former case, and district ids 404 on every /schools/{id} route.
+        """
+        for script in soup.find_all("script"):
+            text = script.string or ""
+            if "gon.user_id" not in text:
+                continue
+            user_id = 0
+            institute_id = 0
+            m = re.search(r"gon\.user_id=(\d+)", text)
+            if m:
+                user_id = int(m.group(1))
+            m = re.search(r"gon\.institute_id=(\d+)", text)
+            if m:
+                institute_id = int(m.group(1))
+            m = re.search(r"""gon\.institute_type\s*=\s*["']?(\w+)""", text)
+            institute_type = m.group(1) if m else ""
+            return user_id, institute_id, institute_type
+        return 0, 0, ""
+
+    def _discover_district_schools(self, district_id: int) -> dict[int, str]:
+        """Expand a district id into its member schools via the school-switcher fragment.
+
+        A district-level parent's gon.institute_id is the district, which is not a
+        school: /schools/{district_id}/feeds and /api/v2/schools/{district_id} both
+        404, and the account's real schools are never found. The district switcher
+        fragment lists them as /schools/{id}/feeds links.
+        """
+        schools: dict[int, str] = {}
+        try:
+            frag = self.get_page(URLS["district_schools"].format(institute_id=district_id))
+        except Exception:
+            logger.debug("Failed to load district school list", exc_info=True)
+            return schools
+
+        for a in frag.find_all("a", href=re.compile(r"/schools/\d+")):
+            m = re.search(r"/schools/(\d+)", a["href"])
+            if not m:
+                continue
+            sid = int(m.group(1))
+            if sid not in schools:
+                schools[sid] = a.get_text(strip=True)
+        return schools
+
     def discover_account(self) -> AccountInfo:
         """Auto-discover user ID, schools, and students from ParentSquare pages.
 
         Fetches the root page for gon.user_id/institute_id, then the school's
         feeds page for sidebar data (school name, student links, school switcher).
+
+        For district-level accounts gon.institute_id is a district rather than a
+        school, so the member schools are resolved first and the first of them is
+        used as the "current" school for the student-discovery pass.
         """
         if self.account.user_id:
             return self.account
 
         # Root page has gon.user_id and gon.institute_id in script tags
         soup = self.get_page("/")
-
-        # Extract user_id and current institute_id from gon.*
-        current_school_id = 0
-        for script in soup.find_all("script"):
-            text = script.string or ""
-            if "gon.user_id" in text:
-                m = re.search(r"gon\.user_id=(\d+)", text)
-                if m:
-                    self.account.user_id = int(m.group(1))
-                m = re.search(r"gon\.institute_id=(\d+)", text)
-                if m:
-                    current_school_id = int(m.group(1))
-                break
+        self.account.user_id, institute_id, institute_type = self._extract_gon(soup)
 
         # If no user_id found, session is invalid — trigger re-login and retry
         if not self.account.user_id:
             logger.info("No gon.user_id found on root page — session not authenticated, re-logging in...")
             self._relogin()
             soup = self.get_page("/")
-            for script in soup.find_all("script"):
-                text = script.string or ""
-                if "gon.user_id" in text:
-                    m = re.search(r"gon\.user_id=(\d+)", text)
-                    if m:
-                        self.account.user_id = int(m.group(1))
-                    m = re.search(r"gon\.institute_id=(\d+)", text)
-                    if m:
-                        current_school_id = int(m.group(1))
-                    break
+            self.account.user_id, institute_id, institute_type = self._extract_gon(soup)
+
+        current_school_id = institute_id
+        if institute_type.lower() == "district" and institute_id:
+            district_schools = self._discover_district_schools(institute_id)
+            if district_schools:
+                self.account.schools.update(district_schools)
+                current_school_id = next(iter(district_schools))
+                logger.info(
+                    f"District account: expanded district {institute_id} "
+                    f"into {len(district_schools)} schools"
+                )
+            else:
+                # Nothing to fall back to: the district id itself is not a school.
+                logger.warning(
+                    f"District account (institute_id={institute_id}) but no member "
+                    "schools found in the district switcher fragment"
+                )
+                return self.account
 
         if not current_school_id:
             logger.warning("Could not discover current school")
