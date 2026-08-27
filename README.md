@@ -57,7 +57,7 @@ Available on the [MCP Registry](https://registry.modelcontextprotocol.io) as `io
 - **`get_student_dashboard`** — School, grade, classes, and teachers as structured JSON
 
 ### Admin
-Read tools are always available; the tools marked *(write)* below are **disabled by default** and only run when `PS_ENABLE_WRITES` is set (see [Enabling admin write tools](#enabling-admin-write-tools)). Every write is recorded to a local audit log. Writes are create/edit only — there is no destructive operation (no deletion of students, guardians, classes, or staff).
+Read tools are always available; the tools marked *(write)* below are **disabled by default** and only run when `PS_ENABLE_WRITES` is set (see [Enabling admin write tools](#enabling-admin-write-tools)). Every write *attempt*, including one blocked by the gate, is recorded to a local audit log. **No tool deletes a record** — students, guardians, classes, and staff can be created and edited but never deleted, and the tools that remove something only unlink a relationship (a staff assignment or a class enrollment), leaving the underlying people and classes intact. Deletion is deliberately left to the ParentSquare website.
 
 #### Roster: students & guardians
 - **`list_students`** — School roster (id, name, grade, SIS id, guardians) as structured JSON, with optional `grade` / `name_contains` filters
