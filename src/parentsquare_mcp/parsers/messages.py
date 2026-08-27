@@ -5,6 +5,7 @@ import re
 from bs4 import BeautifulSoup
 
 from parentsquare_mcp.models import Attachment, Conversation, Message
+from parentsquare_mcp.urls import is_attachment_href
 
 
 def parse_conversation_list(soup: BeautifulSoup) -> list[Conversation]:
@@ -147,7 +148,7 @@ def parse_chat_thread(soup: BeautifulSoup) -> list[Message]:
                     )
             for a_tag in el.find_all("a", href=True):
                 href = a_tag["href"]
-                if "s3.amazonaws.com" in href or "response-content-disposition" in href:
+                if is_attachment_href(href):
                     attachments.append(
                         Attachment(
                             name=a_tag.get_text(strip=True) or "file",

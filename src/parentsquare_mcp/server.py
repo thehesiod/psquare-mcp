@@ -81,6 +81,7 @@ from parentsquare_mcp.parsers.volunteer import parse_volunteer_hours
 from parentsquare_mcp.parsers.messages import parse_chat_thread, parse_conversation_list
 from parentsquare_mcp.parsers.schools import parse_sidebar_features
 from parentsquare_mcp.parsers.students import parse_student_dashboard
+from parentsquare_mcp.urls import redact_url
 
 # Configure logging to stderr only (stdout is reserved for MCP JSON-RPC)
 logging.basicConfig(
@@ -359,7 +360,7 @@ def _fetch_image(client: PSClient, url: str) -> tuple[Image | None, int]:
         fmt = content_type.split("/")[-1].split(";")[0].strip()
         return Image(data=resp.content, format=fmt), size
     except Exception:
-        logger.debug(f"Failed to fetch image: {url}", exc_info=True)
+        logger.debug(f"Failed to fetch image: {redact_url(url)}", exc_info=True)
         return None, 0
 
 
@@ -383,7 +384,7 @@ def _fetch_pdf_text(client: PSClient, url: str) -> str | None:
         doc.close()
         return "\n\n---\n\n".join(pages) if pages else None
     except Exception:
-        logger.debug(f"Failed to extract PDF text: {url}", exc_info=True)
+        logger.debug(f"Failed to extract PDF text: {redact_url(url)}", exc_info=True)
         return None
 
 
