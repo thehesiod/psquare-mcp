@@ -56,8 +56,10 @@ Available on the [MCP Registry](https://registry.modelcontextprotocol.io) as `io
 ### Student
 - **`get_student_dashboard`** — School, grade, classes, and teachers as structured JSON
 
-### Admin (roster: students & guardians)
-Read tools are always available; **write tools are disabled by default** and only run when `PS_ENABLE_WRITES` is set (see below). Every write is recorded to a local audit log. v1 is create/edit only — no destructive operations.
+### Admin
+Read tools are always available; the tools marked *(write)* below are **disabled by default** and only run when `PS_ENABLE_WRITES` is set (see [Enabling admin write tools](#enabling-admin-write-tools)). Every write *attempt*, including one blocked by the gate, is recorded to a local audit log. **No tool deletes a record** — students, guardians, classes, and staff can be created and edited but never deleted, and the tools that remove something only unlink a relationship (a staff assignment or a class enrollment), leaving the underlying people and classes intact. Deletion is deliberately left to the ParentSquare website.
+
+#### Roster: students & guardians
 - **`list_students`** — School roster (id, name, grade, SIS id, guardians) as structured JSON, with optional `grade` / `name_contains` filters
 - **`list_parents`** — Guardian roster (user_id, name, email, phone, linked students) as structured JSON, with optional `name_contains` / `student_name_contains` filters; provides the `user_id` needed by `edit_parent` / `link_guardian_to_student`
 - **`list_grades`** — A school's grades and their `grade_id` values (needed for add/edit)
@@ -70,8 +72,7 @@ Read tools are always available; **write tools are disabled by default** and onl
 - **`invite_parent`** *(write)* — Send (or resend) a ParentSquare registration invitation to one guardian
 - **`bulk_invite_parents`** *(write)* — Invite many guardians at once; already-registered guardians are skipped automatically
 
-### Admin (classes, staff & enrollment)
-Same write gate and audit log as above; no deletion of classes or staff.
+#### Classes, staff & enrollment
 - **`list_classes`** / **`get_class`** — A school's classes, and one class with its full staff list (teachers, assistants, room parents)
 - **`add_class`** *(write)* — Create a class; new classes start **hidden** until `set_class_visibility`
 - **`edit_class`** *(write)* — Rename a class or change its grades
@@ -93,12 +94,12 @@ Same write gate and audit log as above; no deletion of classes or staff.
 
 ### Enabling admin write tools
 
-The admin write tools (`add_student`, `edit_student`, `add_parent`, `edit_parent`,
-`link_guardian_to_student`) modify the live school roster, so they are **off by
-default**. To enable them, set `PS_ENABLE_WRITES=1` (or `true`/`yes`/`on`) in the
-server's environment and restart. Every write attempt (including blocked ones) is
-appended as JSONL to `PS_AUDIT_LOG` (default `~/.parentsquare_audit.log`). Read
-tools (`list_students`, `list_parents`, `list_grades`, `get_student`) work regardless.
+The admin write tools — every tool marked *(write)* under [Admin](#admin), covering
+the student/guardian roster, classes, staff, and class enrollment — modify live
+school data, so they are **off by default**. To enable them, set `PS_ENABLE_WRITES=1`
+(or `true`/`yes`/`on`) in the server's environment and restart. Every write attempt
+(including blocked ones) is appended as JSONL to `PS_AUDIT_LOG` (default
+`~/.parentsquare_audit.log`). The admin read tools work regardless.
 
 ParentSquare's form endpoints answer every accepted POST with the same generic
 `200` "reload" response, which some silent failures also return. To avoid
