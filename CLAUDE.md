@@ -49,6 +49,7 @@ ParentSquare has an internal JSON:API (not publicly documented). Discovered by i
   - `img.feed-image-thumbnail` — gallery/attached images (outside description div)
   - `<img>` inside `.description` div — inline embedded images
 - S3/CloudFront download links carry original filenames in `response-content-disposition` query params
+- Attachment links are recognised by `urls.is_attachment_href()`, which matches the **parsed host** (plus signed-CloudFront query params). Never substring-test a URL here: these hrefs come from school-authored HTML and `get_post` fetches them with the caller's authenticated session
 - URL deduplication via `_url_path_key()` prevents returning the same image as both thumbnail and full-size
 
 ### Response Formats
@@ -126,7 +127,9 @@ uv run --group dev pytest            # Run the unit tests
 ### CI and branch protection
 
 `ci.yml` runs the test suite (3.12 + 3.13) and the packaging checks on every pull
-request and on pushes to `main`. `publish.yml` runs only on tags.
+request and on pushes to `main`. `publish.yml` runs only on a release tag, and
+runs the same matrix against that tag before anything is published — a tag push
+does not trigger `ci.yml`, so without it a release would ship untested.
 
 **All changes go through a pull request**, but `main` requires **zero approving
 reviews**. That combination is deliberate rather than half-finished:
@@ -212,10 +215,19 @@ Before the first CI-driven release, add a "pending" trusted publisher on pypi.or
    ```
 4. The workflow:
    - Verifies versions match the tag across `pyproject.toml` + `server.json`
+   - Runs the test matrix against the tag
    - Builds wheel + sdist with `uv build`
-   - Publishes to PyPI via OIDC
+   - Publishes to PyPI via OIDC, under the `pypi` deployment environment
    - Publishes to the MCP Registry via `mcp-publisher login github-oidc`
    - Creates a GitHub Release with auto-generated notes and the built artifacts
+
+**Re-running a release is safe, and is the way to repair a half-finished one.**
+Every publishing step is idempotent: PyPI uses `skip-existing`, the registry step
+treats `cannot publish duplicate version` as a no-op, and the GitHub Release step
+skips a release that already exists (releases here are immutable, so its assets
+cannot be replaced). Re-run by dispatching `publish.yml` with the tag as its
+`tag` input — the dispatch publishes *that* tag, not the ref it was launched
+from, so one version can never be published by two concurrent runs.
 
 ### Publishing identity: must match the repo owner
 

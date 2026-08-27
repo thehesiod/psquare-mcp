@@ -1,43 +1,83 @@
 name: Publish
 
+# Single entry point for a release. Both paths resolve to a tag, so a
+# dispatch and a tag push of the same version cannot each run a full
+# publish: 0.4.0 shipped twice that way and the second run failed on the
+# duplicate (MCP Registry rejected it, and the immutable GitHub Release
+# refused to have its assets replaced).
 on:
   push:
     tags:
       - "[0-9]*.[0-9]*.[0-9]*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          Release tag to publish (e.g. 0.4.1). The run builds and publishes
+          this tag, not the ref it was dispatched from.
+        required: true
+        type: string
+
+permissions: {}
+
+env:
+  VERSION: ${{ inputs.tag || github.ref_name }}
 
 jobs:
+  test:
+    name: Release test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # Floor and ceiling of the requires-python range in pyproject.toml.
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          ref: ${{ env.VERSION }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: uv run --group dev pytest -q
+
   build:
     name: Build distribution
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          ref: ${{ env.VERSION }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
           python-version: "3.13"
 
       - name: Verify pyproject version matches tag
-        if: startsWith(github.ref, 'refs/tags/')
         run: |
           set -e
           PKG_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          TAG_VERSION="$GITHUB_REF_NAME"
-          echo "pyproject=$PKG_VERSION tag=$TAG_VERSION"
-          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
-            echo "::error::pyproject.toml version ($PKG_VERSION) does not match tag ($TAG_VERSION). Bump pyproject.toml and server.json, then retag."
+          echo "pyproject=$PKG_VERSION tag=$VERSION"
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "::error::pyproject.toml version ($PKG_VERSION) does not match tag ($VERSION). Bump pyproject.toml and server.json, then retag."
             exit 1
           fi
 
       - name: Verify server.json version matches tag
-        if: startsWith(github.ref, 'refs/tags/')
         run: |
           set -e
           SRV_VERSION=$(python -c "import json; d=json.load(open('server.json')); print(d['version'])")
           PKG_IN_SRV=$(python -c "import json; d=json.load(open('server.json')); print(d['packages'][0]['version'])")
-          TAG_VERSION="$GITHUB_REF_NAME"
-          echo "server.json=$SRV_VERSION packages[0]=$PKG_IN_SRV tag=$TAG_VERSION"
-          if [ "$SRV_VERSION" != "$TAG_VERSION" ] || [ "$PKG_IN_SRV" != "$TAG_VERSION" ]; then
-            echo "::error::server.json version ($SRV_VERSION) or packages[0].version ($PKG_IN_SRV) does not match tag ($TAG_VERSION)."
+          echo "server.json=$SRV_VERSION packages[0]=$PKG_IN_SRV tag=$VERSION"
+          if [ "$SRV_VERSION" != "$VERSION" ] || [ "$PKG_IN_SRV" != "$VERSION" ]; then
+            echo "::error::server.json version ($SRV_VERSION) or packages[0].version ($PKG_IN_SRV) does not match tag ($VERSION)."
             exit 1
           fi
 
@@ -57,34 +97,53 @@ jobs:
         run: uv build
 
       - name: Upload distributions
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: dist
           path: dist/
 
   pypi-publish:
     name: Publish to PyPI
-    needs: build
+    needs: [test, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') && github.repository == 'thehesiod/psquare-mcp'
+    if: >-
+      (github.ref_type == 'tag' ||
+       (github.event_name == 'workflow_dispatch' && inputs.tag != '')) &&
+      github.repository == 'thehesiod/psquare-mcp'
+    environment:
+      name: pypi
+      url: https://pypi.org/project/parentsquare-mcp/${{ inputs.tag || github.ref_name }}
     permissions:
+      # Mandatory for PyPI Trusted Publishing.
       id-token: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@v1.14.2
+
+      - name: Check distribution names match the tag
+        run: |
+          set -e
+          test -f "dist/parentsquare_mcp-${VERSION}-py3-none-any.whl"
+          test -f "dist/parentsquare_mcp-${VERSION}.tar.gz"
+
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
+        with:
+          skip-existing: true
 
   registry-publish:
     name: Publish to MCP Registry
     needs: pypi-publish
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') && github.repository == 'thehesiod/psquare-mcp'
     permissions:
+      contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          ref: ${{ env.VERSION }}
+          persist-credentials: false
 
       - name: Install mcp-publisher
         run: |
@@ -99,23 +158,55 @@ jobs:
         run: mcp-publisher login github-oidc
 
       - name: Publish server.json
-        run: mcp-publisher publish
+        run: |
+          set -o pipefail
+          if mcp-publisher publish 2>&1 | tee /tmp/publish.log; then
+            exit 0
+          fi
+          # The registry has no skip-existing flag; a re-run of an already
+          # published version is a no-op, not a failure.
+          if grep -q 'cannot publish duplicate version' /tmp/publish.log; then
+            echo "::notice::${VERSION} is already in the MCP Registry; nothing to do."
+            exit 0
+          fi
+          exit 1
 
   github-release:
     name: Create GitHub Release
-    needs: build
+    needs: [test, build]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: >-
+      github.ref_type == 'tag' ||
+      (github.event_name == 'workflow_dispatch' && inputs.tag != '')
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          ref: ${{ env.VERSION }}
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
         with:
           name: dist
           path: dist/
+
+      - name: Check whether the release already exists
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release $VERSION already exists; leaving it untouched."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create release
-        uses: softprops/action-gh-release@v3
+        # Releases are immutable here, so a second run cannot replace assets.
+        if: steps.existing.outputs.exists == 'false'
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v3
         with:
+          tag_name: ${{ env.VERSION }}
           generate_release_notes: true
           files: dist/*

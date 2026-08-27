@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from bs4 import BeautifulSoup, Tag
 
 from parentsquare_mcp.models import Attachment, Comment, FeedPost, PostDetail, SignupItem
+from parentsquare_mcp.urls import is_attachment_href
 
 # Random hash prefix pattern: 20+ alphanumeric chars followed by underscore
 _HASH_PREFIX_RE = re.compile(r"^[a-zA-Z0-9]{16,}_")
@@ -258,7 +259,7 @@ def parse_post_detail(soup: BeautifulSoup) -> PostDetail:
     download_urls: dict[str, str] = {}  # url_path -> full S3 URL
     for link in soup.find_all("a", href=True):
         href = link["href"]
-        if "s3.amazonaws.com" in href or "response-content-disposition" in href:
+        if is_attachment_href(href):
             path_key = _url_path_key(href)
             disp_name = _disposition_filename(href)
             if disp_name:
@@ -314,7 +315,7 @@ def parse_post_detail(soup: BeautifulSoup) -> PostDetail:
     # Attachments — files (download links not already captured as images)
     for link in soup.find_all("a", href=True):
         href = link["href"]
-        if not ("s3.amazonaws.com" in href or "response-content-disposition" in href):
+        if not is_attachment_href(href):
             continue
         path_key = _url_path_key(href)
         if path_key in seen_paths:
