@@ -143,26 +143,54 @@ reviews**. That combination is deliberate rather than half-finished:
   reports the breakage after `main` is already broken. It also gives each change
   a revertable unit.
 
-Intended settings on `main` (repo settings, not a file — see below):
+`main` is guarded by a **repository ruleset** named `main`
+([Settings → Rules](https://github.com/thehesiod/psquare-mcp/rules), id `21636419`).
+`gh api repos/thehesiod/psquare-mcp/rulesets/21636419` returns every rule and is the
+authoritative source (the list endpoint omits them); the table below covers only the
+rules that change how you work, and the paragraphs after it the choices the API
+cannot explain.
 
-| Setting | Value |
+| Rule | What it means for a contributor |
 |---|---|
-| Require a PR before merging | yes |
-| Required approving reviews | 0 |
-| Dismiss stale reviews | yes |
-| Required status checks | `Test (Python 3.12)`, `Test (Python 3.13)`, `Build distribution` |
-| Strict (branch up to date) | no — avoids a rebase of every open PR each time one merges |
-| Include administrators | **yes** |
+| `required_signatures` | every commit must carry a verified signature — see below |
+| `required_linear_history` | squash or rebase; no merge commits |
+| `pull_request` | every review thread must be resolved before merging |
+| `copilot_code_review` | a bot review lands on every push, drafts excepted |
+| `required_status_checks` | the `ci.yml` jobs, non-strict — a merge elsewhere will not force you to rebase |
 
-"Include administrators" is the setting that matters. With it off, protection is
-advisory for admins and GitHub offers a "merge without waiting for requirements"
-checkbox, so the rules only bind people who cannot bypass them anyway.
+Deliberate choices worth preserving: **zero approvals** for the reason given above,
+**non-strict** status checks so one merge does not require rebasing every open PR,
+and **no bypass actors** (`current_user_can_bypass: never`). The last is the one that
+makes the rest mean anything — grant a bypass and the rules turn advisory for whoever
+holds it, since GitHub offers them a "merge without waiting for requirements"
+checkbox, leaving the rules binding only on people who could not bypass them anyway.
 
-These are recorded here rather than automated because applying them from CI would
+`required_signatures` is the rule most likely to block a newcomer, because nothing in
+a clone hints at it and an unsigned commit is only rejected at merge time, after the
+work is done. Signatures cannot be added without rewriting the commits, so configure
+signing *before* committing:
+
+```bash
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global commit.gpgsign true
+```
+
+Then add that same public key to GitHub **a second time**, as a *Signing Key* — GitHub
+tracks authentication and signing keys separately, so an existing auth key does not
+count. To re-sign commits already made, `git rebase --exec 'git commit --amend --no-edit -S' origin/main`.
+
+These are recorded here rather than applied from CI because automating them would
 require a PAT with `administration: write` stored as a repo secret. The release
 pipeline is deliberately token-free (OIDC only), and a long-lived admin token is
-a poor trade for a setting that changes almost never. If protection is ever lost,
-restore it from the table above.
+a poor trade for a setting that changes almost never. That same `gh api` call prints
+the full definition, so it doubles as a restorable snapshot — take one before you
+need it, since a deleted ruleset cannot be read back.
+
+**A ruleset leaves no trace in the tree**, which is the whole reason this section
+exists: it is an account setting, there is no ruleset-as-code here, and so a `git pull`
+can never show that the rules changed. This section has already gone stale once, by
+roughly half a day. Whoever changes the rules owns updating it in the same PR.
 
 **Because a PR description does not live in the working tree**, reasoning that
 constrains future code belongs in a commit message, a docstring beside the code,
