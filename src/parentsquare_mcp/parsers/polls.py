@@ -26,7 +26,9 @@ def parse_polls_page(soup: BeautifulSoup) -> list[Poll]:
     if not feeds_list:
         return polls
 
-    for ps_box in feeds_list.find_all("div", class_="ps-box", recursive=False):
+    # ps-box is nested under ul.feeds-list > li.feeds-list-item, not a direct
+    # child of #feeds-list, so this can't use recursive=False.
+    for ps_box in feeds_list.find_all("div", class_="ps-box"):
         feed_id_el = ps_box.find("div", id=re.compile(r"^feed_\d+"))
         if not feed_id_el:
             continue

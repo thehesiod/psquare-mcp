@@ -55,7 +55,7 @@ def parse_feed_page(soup: BeautifulSoup) -> list[FeedPost]:
     """Parse /schools/{id}/feeds?page=N -> list of FeedPost.
 
     Feed structure:
-      #feeds-list > div.ps-box > div.feed > div#feed_{id} > div.feed-show
+      #feeds-list > ul.feeds-list > li.feeds-list-item > div.ps-box > div.feed > div#feed_{id} > div.feed-show
         .feed-title > .subject a span[role=heading]  (title)
         .feed-metadata > .user-name  (author)
         .feed-metadata > .time-ago[data-timestamp]  (date)
@@ -63,13 +63,18 @@ def parse_feed_page(soup: BeautifulSoup) -> list[FeedPost]:
         .nav-pills li  (actions: Appreciate, Comment, Print, Download All/File)
         .appreciations-box  (appreciation count)
         img.feed-image-thumbnail  (has attachments)
+
+    ps-box is no longer a direct child of #feeds-list (ParentSquare added an
+    intermediate ul.feeds-list > li.feeds-list-item wrapper), so this can't
+    use recursive=False; there is exactly one ps-box per feed item regardless
+    of nesting depth, so an unrestricted find_all is still correct.
     """
     posts: list[FeedPost] = []
     feeds_list = soup.find("div", id="feeds-list")
     if not feeds_list:
         return posts
 
-    for ps_box in feeds_list.find_all("div", class_="ps-box", recursive=False):
+    for ps_box in feeds_list.find_all("div", class_="ps-box"):
         feed_id_el = ps_box.find("div", id=re.compile(r"^feed_\d+"))
         if not feed_id_el:
             continue
